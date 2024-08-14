@@ -20,7 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define FLAME_WIDTH 0.15
 #define FLAME_HEIGHT 0.8
 #define FLAME_VERTICAL_SPREAD 0.5
-#define FLAME_HORIZONTAL_SHEAR 0.01
 #define FRACTAL_NOISE_INIT_FREQUENCY 2.0
 #define FRACTAL_NOISE_OCTAVES 4
 #define FRACTAL_NOISE_PERSISTENCE 0.7
@@ -35,6 +34,7 @@ Theory and Mathematical Statistics. VSP, Zeist, The Netherlands.
 float rand(vec2 coord)
 {
     float t = dot(vec2(19.244, 107.118), coord);
+    
     return fract(sin(t) * 393919.062);
 }
 
@@ -51,15 +51,13 @@ Association for Computing Machinery, New York, NY, USA, 287–296. https://doi.o
 */
 float perlinNoise(vec2 coord, float frequency)
 {
-  vec2 v = vec2(coord.x * frequency, coord.y * frequency);
-
-  float x1 = floor(v.x);
-  float y1 = floor(v.y);
-  float x2 = floor(v.x + 1.0);
-  float y2 = floor(v.y + 1.0);
-
-  float Lx = quintic(fract(v.x));
-  float Ly = quintic(fract(v.y));
+  vec2 vec = vec2(coord.x * frequency, coord.y * frequency);
+  float x1 = floor(vec.x);
+  float y1 = floor(vec.y);
+  float x2 = floor(vec.x + 1.0);
+  float y2 = floor(vec.y + 1.0);
+  float Lx = quintic(fract(vec.x));
+  float Ly = quintic(fract(vec.y));
 
   return mix(
       mix(rand(vec2(x1, y1)), rand(vec2(x2, y1)), Lx),
@@ -87,40 +85,33 @@ float fractalNoise(vec2 coord, float initFrequency, int steps, float persistence
   return result;
 }
 
-// Piriform Curve: measure 'distance' 
-// The curve has reflective symmetry about the y-axis and yMin = 0.
-// The curve is a^4 * x^2 + b^2 * (y - 2a)^3 = 0
-// a = FLAME_HEIGHT / 2 and b = 8 * FLAME_WIDTH / (3 * sqrt(3))
-// If you parameterize the curve, you'll find that with this tuning you get xMax = W / 2 and yMax = H.
+// Use the Piriform Curve to measure 'distance'. 
+// The curve is a^4 * x^2 + b^2 * (y - 2a)^3 = 0. It has reflective symmetry about the y-axis and yMin = 0.
+// a = FLAME_HEIGHT / 2 and b = 8 * FLAME_WIDTH / (3 * sqrt(3)); with this tuning you get xMax = W / 2 and yMax = H.
 /*
 Weisstein, Eric W. "Piriform Curve." From MathWorld--A Wolfram Web Resource. https://mathworld.wolfram.com/PiriformCurve.html
 */
 float piriform(vec2 coord, float width, float height)
 {
-    float a = height / 2.0;
-    float b = 4.0 * width / (3.0 * sqrt(3.0));
-    float xx = a * a * a * a * coord.x * coord.x;
+    float a  = height / 2.0;
+    float b  = 4.0 * width / (3.0 * sqrt(3.0));
     float yy = coord.y - 2.0 * a;
-    float yyy = b * b * yy * yy * yy * coord.y;
-    return xx + yyy; 
+    
+    return a * a * a * a * coord.x * coord.x + b * b * yy * yy * yy * coord.y; 
 }
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-    vec2 uv = fragCoord.xy / iResolution.xy;
-     
-    float noise = fractalNoise(uv - vec2(0.0, iTime * DRIFT), FRACTAL_NOISE_INIT_FREQUENCY, FRACTAL_NOISE_OCTAVES, FRACTAL_NOISE_PERSISTENCE);
+    vec2 uv              = fragCoord.xy / iResolution.xy;
+    float noise          = fractalNoise(uv - vec2(0.0, iTime * DRIFT), FRACTAL_NOISE_INIT_FREQUENCY, FRACTAL_NOISE_OCTAVES, FRACTAL_NOISE_PERSISTENCE);
     float verticalSpread = (2.0 * noise - 1.0) * 1.0 / (1.0 + exp(-uv.y)) * FLAME_VERTICAL_SPREAD; 
-    vec2 coord = vec2(abs(uv.x - 0.5), uv.y * (1.0 + verticalSpread)); 
+    vec2 coord           = vec2(abs(uv.x - 0.5), uv.y * (1.0 + verticalSpread)); 
+    float inner          = -piriform(coord, 0.6 * FLAME_WIDTH, 0.5 * FLAME_HEIGHT);
+    float outer          = -piriform(coord,       FLAME_WIDTH,       FLAME_HEIGHT);
+    float innerShape     = step(0.0, inner);
+    float outerShape     = step(0.0, outer);
+    vec3 innerColor      = innerShape * INNER_COLOR;
+    vec3 outerColor      = (1.0 - innerShape) * outerShape * OUTER_COLOR;
     
-    float inner = -piriform(coord, 0.6 * FLAME_WIDTH, 0.5 * FLAME_HEIGHT);
-    float outer = -piriform(coord, 1.0 * FLAME_WIDTH, 1.0 * FLAME_HEIGHT);
-    float innerShape = step(0.0, inner);
-    float outerShape = step(0.0, outer);
-    
-    vec3 innerColor = innerShape * INNER_COLOR;
-    vec3 outerColor = (1.0 - innerShape) * outerShape * OUTER_COLOR;
-    vec3 color = innerColor + outerColor;
-    
-    fragColor = vec4(color, 1.0);
+    fragColor = vec4(innerColor + outerColor, 1.0);
 }
