@@ -86,8 +86,9 @@ float fractalNoise(vec2 coord, float initFrequency, int steps, float persistence
 }
 
 // Use the Piriform Curve to measure 'distance'. 
-// The curve is a^4 * x^2 + b^2 * (y - 2a)^3 = 0. It has reflective symmetry about the y-axis and yMin = 0.
-// a = FLAME_HEIGHT / 2 and b = 4 * FLAME_WIDTH / (3 * sqrt(3)); with this tuning you get xMax = W / 2 and yMax = H.
+// The curve is described by 0 = a^4 * x^2 + b^2 * y * (y - 2a)^3. 
+// It has reflective symmetry about the y-axis and yMin = 0.
+// Force a = height / 2 and b = 4 * width / (3 * sqrt(3)); with this tuning you get xMax = width / 2 and yMax = height.
 /*
 Weisstein, Eric W. "Piriform Curve." From MathWorld--A Wolfram Web Resource. https://mathworld.wolfram.com/PiriformCurve.html
 */
