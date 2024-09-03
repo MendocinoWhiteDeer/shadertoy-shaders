@@ -188,9 +188,12 @@ vec3 getColor(Ray ry)
     float totInternalPath = 0.0;
     for (int i = 0; i < MAX_COLLISIONS; i++)
     {
-        Intersection intersection = rayIntersectIcosahedron(ry);
+	Intersection intersection = rayIntersectIcosahedron(ry);
         if (intersection.t < 0.0 || intersection.t >= 1e2)
-            return color + multiplier * getEnvironmentColor(ry);
+        {
+            if (i == 0) return getEnvironmentColor(ry);
+            break;
+        }
         
         // Move along the ray to the intersection point.
         ry.point += ry.direction * intersection.t;
